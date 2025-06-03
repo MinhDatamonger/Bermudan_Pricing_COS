@@ -1,0 +1,232 @@
+\documentclass{article}
+\usepackage{a4wide}
+\usepackage{graphicx} % Required for inserting images
+\usepackage{hyperref}
+\usepackage{setspace}
+\usepackage{arydshln}
+\usepackage{booktabs}
+\usepackage{caption}
+\usepackage{float}
+\usepackage{dsfont}
+\usepackage{tikz-cd}
+\usepackage{amsmath, amssymb, amsfonts, mathtools, derivative}
+
+\title{Early Exercise with the COS Method \\ Computational Finance Final Project}
+\author{Duc Minh Nguyen}
+\date{June 2025}
+
+\begin{document}
+
+\maketitle
+
+\section{Introduction}
+The goal of this paper is to investigate option pricing with the COS method, specifically to price Bermudan options. It aims to explore a broader question if premature exercise of options is more profitable or not. This research first come up with the pricing framework for Bermudan put option. After that, it will apply COS pricing in practice. Finally, this research extends the COS pricing to the Variance Gamma model.   
+
+\section{Model Assumptions}
+This research assumes a Black-Scholes economy, where the stock process $S_t$ follows a Geometric Brownian Motion:
+\begin{align}
+    dS_t = r S_t dt + \sigma S_t dW_t
+\end{align}
+The log-price process $X_t:=\ln S_t$ follows, by Itô's Lemma:
+$$
+dX_t = \big(r-\frac{1}{2} \sigma^2 \big)dt + \sigma dW_t
+$$
+Then the characteristic function of the  Black-Scholes model is:
+$$
+\phi_{X}(u) = \mathbb{E} \left[ e^{i u X_T} \right] = 
+\exp\left( i u (r - \tfrac{1}{2} \sigma^2) \tau - \tfrac{1}{2} \sigma^2 u^2 \tau \right)
+$$
+where $\tau = T - t$. Later in this research, the assumptions of Variance Gamma model will be considered for comparison.
+
+\section{Bermudan Options}
+A Bermudan option is a financial
+ derivative that gives the owner the right, but not the obligation to buy or sell an asset at a fixed price, just like the vanilla European and American options. The difference, however, is that, unlike the European option, a Bermudan option can be exercised before maturity. However, it cannot be exercised at any time like American options, but at a fixed agreed dates only. Mathematically speaking, let $T$ be the maturity date, then the Bermudan option can be exercised at time points $\{ t_n\}_{n=1}^M \subset [0,T]$ with $t_{n} \leq t_{n+1}$ and $t_M = T$. In this research, we will consider a Bermudan put option. To formulate the payoff of it mathematically, let's consider the payoff function of a European put option:
+ $$
+ P(T,X_T) = \max\{K(1-e^{X_T}),0 \} \ \ \ \quad\text{where} \ \quad X_T=\ln \big( \frac{S_T}{K} \big) \quad (\text{log-moneyness})
+ $$
+ Now, for Bermudan put pricing, we want to evaluate the payoff at each possible exercise dates $t_n$, where we compare the profit of immediate exercise versus the continuation value delaying. Meaning at $t_n$ the Bermudan put value $V(t_n, X_t)$ is:
+\begin{align}
+    & V(t_n, X_t) = \max \{ P(t_n, X_{t_n}), \ \text{Cont}(t_n, X_{t_n})  \} \\
+\text{where}
+    \\
+& \text{Cont}(t_n, X_{t_n}) = \mathbb{E}^{\mathbb{Q}} \Big[ e^{-r(t_{n+1}-t_n)} V(t_{n+1}, X_{t_{n+1}}) \Big| X_{t_n}   \Big]
+\end{align}
+Here $Cont$ is the continuation value function. With this framework, we can then apply dynamic programming to price Bermudan put. In this approach, we start at the maturity date, by setting the value of Bermudan equal to that of European put, i.e. $V(t_M, X_{t_M})=P(T, X_T)$. Then, we work backwards to compute earlier values, using updating equation
+$$
+V(t_n, X_t) = \max \{ P(t_n, X_{t_n}), \mathbb{E}^{\mathbb{Q}} \Big[ e^{-r(t_{n+1}-t_n)} V(t_{n+1}, X_{t_{n+1}}) \Big| X_{t_n}   \Big]  \} 
+$$
+Then the price of Bermudan put is the last computed value $V(t_0, X_{t_0})$.
+
+\section{COS Method for Bermudan Option}
+In each step of dynamic programming, we need to estimate the continuation value $\\  \text{Cont}(t_n, X_{t_n}) = \mathbb{E}^{\mathbb{Q}} \Big[ e^{-r(t_{n+1}-t_n)} V(t_{n+1}, X_{t_{n+1}}) \Big| X_{t_n}   \Big]$. Here is where we use the COS method.
+\\
+First, we truncate the domain for $X_t$ to a closed interval $[-L\sqrt{T}, L\sqrt{T} ]$ for some parameter $L >0$. This choice is motivated by the fact that under Black-Scholes, $\text{Var}[X_T]= \sigma^2T$. Next, we want to have $N$ COS basis frequency, so we define the grids for integration. Set the number of projection points to $M_{\text{proj}}=2N$, and construct a uniform grid of $M_{\text{proj}}=2N$ points $x_m$ in  $[-L\sqrt{T}, L\sqrt{T} ]$ with
+$$
+x_m= -L\sqrt{T} + m \Delta x, \quad m=0,1,...,M_{\text{proj}}-1, \quad \Delta x = \frac{2L \sqrt{T}}{M_{\text{proj}}-1} 
+$$
+Then, for each time $t_n$ we have the COS coefficients as
+$$
+U_k^{n} = \frac{2}{b-a} \int_a^b V(t_{n+1}, x) \cos \Big(k \pi \frac{x-a}{b-a} \Big) dx 
+$$
+for $k=0,...,N-1$ and $a=-L\sqrt{T}$, $b=L\sqrt{T}$. The integral is approximated via the Riemann sum on the defined grid:
+$$
+U^n_k \approx \frac{2}{b-a} \sum_{m=0}^{M_{\text{proj}}-1} V(t_{n+1}, x_m) \cos \Big(k \pi \frac{x_m-a}{b-a} \Big) \Delta x
+$$
+Finally, the continuation value is estimated as:
+$$
+\text{Cont}(t_n, X_{t_n}) = \mathbb{E}^{\mathbb{Q}} \Big[ e^{-r(t_{n+1}-t_n)} V(t_{n+1}, X_{t_{n+1}}) \Big| X_{t_n}   \Big] \approx e^{-r \Delta t_j} \sum_{k=0}^{N-1} U_k \, \Re\left\{ \varphi_k \, e^{i u_k (x_m - a)} \right\}
+$$
+where $\varphi_k = \phi_{\Delta X} ( \frac{k \pi}{b-a} )$ are the values of Black-Scholes characteristic function of increment of $X$ over the interval $\Delta t_j$:
+$$
+\varphi_k = \exp\left( i \frac{k \pi}{b-a}  \left(r - \tfrac{1}{2} \sigma^2\right) \Delta t_j - \tfrac{1}{2} (\frac{k \pi}{b-a} )^2 \sigma^2 \Delta t_j \right)
+$$
+With the continuation value computed, the value function $V(t_n, X_{t_n})$ is then determined. This process is repeated again according to the dynamic programming algorithm outlined in the previous section until the option price is computed.
+
+
+\section{Binomial Tree Model}
+The analytic pricing of Bermudan options is generally not known. So, to benchmark the COS method, let's consider the Binomial Tree model for pricing Bermudan puts, in the Cox-Ross-Rubinstein framework. In this model, it is assumed that in every small time step $\Delta t$ the stock can go up by $u=e^{\sigma \sqrt{\Delta t}}$ or go down by $d = 1/u $. The probability of going up under risk neutral measure is $p=\frac{ e^{r \Delta t}-d }{u-d} $. The Bermudan exercise dates $t_n$ are mapped to the nearest integer time step. To price the Bermudan option, start from the maturity date and set $V_T=\max \{ K -S'_T,0 \}$ where $S'_T$ is the terminal value of stock in the tree. Then work backwards in time, where in each step computing the continuation value 
+$$
+\text{Cont}^{bin}_{ij} = e^{-r \Delta t} [pV_{i+1, j+1}+(1-p)V_{i+1,j}]
+$$
+where $(i,j)$ is the coordinate of the binomial tree. Then the value of Bermudan put at coordinate $(i,j)$ is 
+$$
+V_{i,j} = \max \{ \text{Cont}^{bin}_{ij}, \max \{ K - S_{i,j}, 0 \}  \}
+$$
+The price of Bermudan put is then $V_{0,0}.$
+
+\section{Variance Gamma Model}
+It is of interest to change the Black-Scholes GBM assumption to the Variance Gamma assumption, with a reason to investigate how the Bermudan option pricing changes under a more fat-tail Gamma distribution. The Variance Gamma process is a pure Levy jump process, which can accurately model the rare-event risks in the financial market that Black-Scholes does not capture. We can model the log-price under Variance Gamma as
+$$
+X_t = \theta G_t + \sigma W_t
+$$
+where $G_t$ is the Gamma process, $\sigma$ is the Brownian volatility, and $\nu$ is the variance of $G_t$. The characteristic function of the Variance Gamma process is known, which reads as 
+$$
+\phi(u; T) = \mathbb{E}\left[ e^{i u \log(S_T)} \right]
+= \exp\left( i u (r + \omega) T - \frac{T}{\nu} \log\left(1 - i u \theta \nu + \frac{1}{2} \sigma^2 \nu u^2 \right) \right)
+$$
+where the drift adjustment term $\omega$ ensures the process is risk-neutral:
+$$
+\omega = \frac{1}{\nu} \log\left( 1 - \theta \nu - \frac{1}{2} \sigma^2 \nu \right)
+$$
+We then can perform COS method pricing in the exactly the same way as in the case of Black-Scholes, but only the characteristic function is replaced.
+
+\section{Numerical Results and Analysis}
+In this section, the pricing of Bermudan puts with COS method is applied in practice. The setup is as follows: let the maturity date be $T=1$, initial stock price is $S_0=100$, strike be $K=110$, interest rate be $r=5\%$, and volatility be $\sigma = 20 \%$. The rest of this section is structured as follows: Firstly, we consider a Bermudan option with fixed possible exercise dates $\{ 0.1, 0.25, 0.3, 0.5, 0.75, 0.9, 1.0.\}$, for which we will price with the COS method for different frequencies $N$ to analyze the convergence. We then compare it with the binomial tree pricing, and also compare with the price of a European option on the same stock in order to determine the early exercise premium. In the second part, we will vary the set of exercise dates of the Bermudan option to investigate the convergence. Finally, in the last part, a Variance Gamma based pricing of the Bermudan option is performed and compared to the Black-Scholes COS price.
+\\ \\
+Firstly, consider the Bermudan put with exercise dates $\{ 0.1, 0.25, 0.3, 0.5, 0.75, 0.9, 1.0.\}$. Pricing this option with COS method for $N=32, 48, 64, 82, 128, 200, 256, 512$ yields the convergence result as shown in Table 1 and Figure 1. From Table 1, it is possible to see that for smaller $N$, the price of Bermudan put vary drastically and is different from the computed binomial tree price of $11.82$. However, as $N$ increases, from $N=128$ onward, the COS price begins to converge, and becomes very similar to the binomial tree price.
+
+
+\begin{table}[h!]
+\centering
+\begin{tabular}{@{}rcc@{}}
+\toprule
+COS steps ($N$) & COS Price & Binomial Price (1000 steps) \\
+\midrule
+32  &  -1.262884  & 11.821307 \\
+48  &   3.081622  & 11.821307 \\
+64  &   5.996877  & 11.821307 \\
+82  &  16.566109  & 11.821307 \\
+128 &  11.241294  & 11.821307 \\
+200 &  11.873692  & 11.821307 \\
+256 &  11.845536  & 11.821307 \\
+512 &  11.820994  & 11.821307 \\
+\bottomrule
+\end{tabular}
+\caption{Bermudan Put Prices (COS) vs Binomial Tree for Exercise Dates \{ 0.1, 0.25, 0.3, 0.5, 0.75, 0.9, 1.0.\}}
+\end{table}
+ Next, let's compute the early exercise premium by first computing the exact price of a European put with Black-Scholes, which yields $ \mathbf{10.6753}$. Then, the early-exercise premium is computed as Bermudan price minus 10.6753. These results are displayed in Table 2. It is possible to see that there is a positive premium of exercising earlier than the maturity date when considering COS price of Bermudan option. An early exercise then is approximately 1.145 more profitable than exercising at maturity.
+
+\begin{table}[h!]
+\centering
+\begin{tabular}{@{}rccc@{}}
+\toprule
+$N$ & Bermudan (COS) & European Put & Early-Exercise Premium \\
+\midrule
+32  & -1.262884  & 10.675325 & -11.938208 \\
+48  &  3.081622  & 10.675325 &  -7.593703 \\
+64  &  5.996877  & 10.675325 &  -4.678448 \\
+82  & 16.566109  & 10.675325 &   5.890784 \\
+128 & 11.241294  & 10.675325 &   0.565970 \\
+200 & 11.873692  & 10.675325 &   1.198368 \\
+256 & 11.845536  & 10.675325 &   1.170211 \\
+512 & 11.820994  & 10.675325 &   1.145669 \\
+\bottomrule
+\end{tabular}
+\caption{Comparison of Bermudan Put (COS) with European Put (Black-Scholes)}
+\end{table}
+
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=1.2\linewidth]{Convergence dates.png}
+    \caption{Convergence of COS for different exercise dates.}
+    \label{fig:enter-label}
+\end{figure}
+Next, let's now consider different set of allowed exercise dates for the Bermudan put. Specifically we consider four different cases of exercise dates, as displayed in Table 3. The one that has only one exercise date at maturity is obviously equivalent to the European put option. Figure 1 shows the convergence of each Bermudan option with different exercise dates. As we can see, when the number of exercise times are small, the convergence of the COS method is extremely fast. But as the number of possible exercise dates increases to three and four, the COS price fluctuates more and more, with increasingly slower convergence. This is likely due to increased complexity of having more exercise options. However, when looking at Table 3, we observe that the Bermudan option becomes more expensive as the number of exercise dates increases, and so does the early exercise premium. This is logical, since more available exercise dates means more flexibility of the option ownership, which highers the price. 
+
+
+\begin{table}[h!]
+\centering
+\begin{tabular}{@{}>{}p{6.5cm}cc@{}}
+\toprule
+Exercise Dates & Price & Early-Exercise Premium \\
+\midrule
+$[1.00]$ & 10.678479 & 0.003154 \\
+$[0.50,\ 1.00]$ & 11.411871 & 0.736546 \\
+$[0.25,\ 0.50,\ 0.75,\ 1.00]$ & 11.725936 & 1.050611 \\
+$[0.10,\ 0.25,\ 0.30,\ 0.50,\ 0.75,\ 0.90,\ 1.00]$ & 11.820994 & 1.145669 \\
+\bottomrule
+\end{tabular}
+\caption{Convergence with Respect to Number of Exercise Dates (COS Price at $N=512$)}
+\end{table}
+\break
+Finally, let's move to the Variance Gamma model for Bermudan option. We again consider the Bermudan option with exercise dates $\{ 0.1, 0.25, 0.3, 0.5, 0.75, 0.9, 1.0\}$. We priced this option with COS method with both Variance Gamma and Black-Scholes assumptions. Figure 2 shows the convergence of the two pricing models for different $N$, and what we see is that the Variance Gamma model constantly under-price the Bermudan option, compared to the Black-Scholes COS. This is consistent with the fact that the Variance Gamma model captures more tail risk of the financial market, which obviously decreases the expected profitability of the option. Moreover, in Table 5 which displays the COS price of Variance Gamma and Black Scholes for $N=512$, we can see that the early-exercise premium of VG model is in fact negative, compared to positive of Black-Scholes. What this implies is that under the Variance Gamma assumptions, it is actually less desirable to exercise early! As under tail risk of Variance Gamma, there might be more loss possibilities when exercising early.   
+
+
+\begin{table}[h!]
+\centering
+\begin{tabular}{rcc}
+\toprule
+$N$ & COS--BS & COS--VG \\
+\midrule
+32  &  -1.262884 & -3.444846 \\
+48  &   3.081622 &  0.077436 \\
+64  &   5.996877 &  2.681828 \\
+82  &  16.566109 & 18.385491 \\
+128 &  11.241294 &  7.933754 \\
+200 &  11.873692 &  9.662375 \\
+256 &  11.845536 &  9.861538 \\
+512 &  11.820994 &  9.627554 \\
+\bottomrule
+\end{tabular}
+\caption{Bermudan Put Prices (COS) under Black-Scholes vs Variance Gamma Models}
+\end{table}
+
+
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=1\linewidth]{BS vs VG.png}
+    \caption{COS Convergence: Bermudan Put under BS vs VG.}
+    \label{fig:enter-label}
+\end{figure}
+
+
+\begin{table}[h!]
+\centering
+\caption{Bermudan-COS Price and Early-Exercise Premium Comparison: BS vs VG}
+\begin{tabular}{lcc}
+\toprule
+Model & Bermudan--COS Price & Early-Exercise Premium \\
+\midrule
+BS    & 11.820994           & 1.145669 \\
+VG    & 9.627554            & -1.047771 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+
+\break 
+\section{Conclusion}
+This paper shows that the COS method is absolutely relevant in pricing Bermudan options, since in all the numerical experiments, the COS prices converge. However, it is discovered that the COS method has a slower convergence rate when there are more available exercise dates. In that case the binomial tree approach seems to outperform the COS method. However, the COS method is found to perform decently under the presence of high tail risk, as the Variance Gamma COS pricing converges as quickly as its Black-Scholes counterpart. This suggests that the COS method can perform fast under highly uncertain environments.
+
+
+\end{document}
