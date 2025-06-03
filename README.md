@@ -1,0 +1,1 @@
+This is the final individual project for the Computational Finance course. In this project, I price Bermudan put option with the Fourier COS method, and then extend it to the Variance Gamma model. The thorough report of this project can be found in the "Computational Finance Final Project.pdf" file. 
